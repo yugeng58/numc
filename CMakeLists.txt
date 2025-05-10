@@ -10,6 +10,7 @@ add_executable(ndarray
         main.cpp
         numc.cpp
         numc_modify.cpp
+        numc_safe.cpp
 )
 
 # 强制应用OpenMP设置到目标
