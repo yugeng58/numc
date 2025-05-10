@@ -137,7 +137,6 @@ public:
     }
 
     numc& operator=(numc&& other){
-        std::cout << "move" << std::endl;
         if (this != &other)
             return *this;
         delete [] shape;
