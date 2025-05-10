@@ -23,8 +23,9 @@ int main() {
     C.reshape(3,new int[3]{1,1,100});
     numc<int> D = A*B*C;
 
-//    D.print();
+//    for (const auto& val : D) {
+//        std::cout << val << " ";
+//    }
 
     return 0;
-
 }

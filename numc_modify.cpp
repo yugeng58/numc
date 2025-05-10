@@ -50,6 +50,46 @@ public:
             delete[] arr;
     }
 
+    class iterator {
+    private:
+        dtype* ptr;
+    public:
+        using iterator_category = std::random_access_iterator_tag;
+        using value_type        = dtype;
+        using difference_type   = std::ptrdiff_t;
+        using pointer           = dtype*;
+        using reference         = dtype&;
+
+        explicit iterator(dtype* p = nullptr) : ptr(p) {}
+
+        reference operator*() const { return *ptr; }
+        pointer operator->() const { return ptr; }
+
+        iterator& operator++() { ++ptr; return *this; }
+        iterator operator++(int) { iterator tmp = *this; ++ptr; return tmp; }
+        iterator& operator--() { --ptr; return *this; }
+        iterator operator--(int) { iterator tmp = *this; --ptr; return tmp; }
+
+        iterator operator+(difference_type n) const { return iterator(ptr + n); }
+        iterator operator-(difference_type n) const { return iterator(ptr - n); }
+        difference_type operator-(const iterator& other) const { return ptr - other.ptr; }
+
+        iterator& operator+=(difference_type n) { ptr += n; return *this; }
+        iterator& operator-=(difference_type n) { ptr -= n; return *this; }
+
+        reference operator[](difference_type n) const { return ptr[n]; }
+
+        bool operator==(const iterator& other) const { return ptr == other.ptr; }
+        bool operator!=(const iterator& other) const { return ptr != other.ptr; }
+        bool operator<(const iterator& other) const { return ptr < other.ptr; }
+        bool operator>(const iterator& other) const { return ptr > other.ptr; }
+        bool operator<=(const iterator& other) const { return ptr <= other.ptr; }
+        bool operator>=(const iterator& other) const { return ptr >= other.ptr; }
+    };
+
+    iterator begin(){ return iterator(arr);}
+    iterator end(){ return iterator(arr + size);}
+
     // Assignment operator: Assign from another numc object
     numc & operator= (const numc & source) {
         if (temp) {
