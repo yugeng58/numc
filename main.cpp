@@ -1,5 +1,6 @@
 #include <iostream>
-#include "numc.cpp"
+#include "omp.h"
+#include "numc_modify.cpp"
 using namespace std;
 
 int main() {
@@ -27,4 +28,5 @@ int main() {
     D.slice(0,5,1).print();
 
     return 0;
+
 }
