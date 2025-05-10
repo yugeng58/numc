@@ -74,7 +74,7 @@ public:
     }
 
 
-    numc(numc&& other): dim(other.dim),shape(other.shape),size(other.size),temp(true){
+    numc(numc&& other): dim(other.dim),shape(other.shape),size(other.size),temp(false){
         if(other.temp == false)
             arr = other.arr;
         else{
