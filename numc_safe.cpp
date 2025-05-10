@@ -73,6 +73,91 @@ public:
         }
     }
 
+
+    numc(numc&& other): dim(other.dim),shape(other.shape),size(other.size),temp(true){
+        if(other.temp == false)
+            arr = other.arr;
+        else{
+            arr = new int[size];
+#pragma omp parallel for
+            for(int i = 0;i < size;i++)
+                arr[i] = other.arr[i];
+        }
+        other.shape = nullptr;
+        other.arr = nullptr;
+    }
+
+    /**
+     * @brief Assignment operator to copy data from another numc object.
+     * @param source The numc object to assign from.
+     * @return Reference to the current object.
+     */
+    numc& operator=(const numc& source) {
+        if (this == &source) return *this; // Self-assignment check
+        if (temp) {
+            if (dim != source.dim) {
+                throw std::invalid_argument("Dimension mismatch in assignment: " + std::to_string(dim) + " vs " + std::to_string(source.dim));
+            }
+            for (int i = 0; i < dim; i++) {
+                if (shape[i] != source.shape[i]) {
+                    throw std::invalid_argument("Shape mismatch in assignment at dimension " + std::to_string(i) + ": " + std::to_string(shape[i]) + " vs " + std::to_string(source.shape[i]));
+                }
+            }
+#pragma omp parallel for
+            for (int i = 0; i < size; i++) {
+                arr[i] = source.arr[i];
+            }
+        }
+        else{
+            int* new_shape = nullptr;
+            dtype* new_arr = nullptr;
+            try {
+                new_shape = new int[source.dim];
+                for (int i = 0; i < source.dim; i++) {
+                    new_shape[i] = source.shape[i];
+                }
+                new_arr = new dtype[source.size];
+#pragma omp parallel for
+                for (int i = 0; i < source.size; i++) {
+                    new_arr[i] = source.arr[i];
+                }
+                delete[] shape;
+                delete[] arr;
+                dim = source.dim;
+                shape = new_shape;
+                arr = new_arr;
+                size = source.size;
+            } catch (const std::bad_alloc& e) {
+                delete[] new_shape;
+                delete[] new_arr;
+                throw std::runtime_error("Memory allocation failed in assignment: " + std::string(e.what()));
+            }
+        }
+        return *this;
+    }
+
+    numc& operator=(numc&& other){
+        std::cout << "move" << std::endl;
+        if (this != &other)
+            return *this;
+        delete [] shape;
+        delete [] arr;
+        size = other.size;
+        dim = other.dim;
+        shape = other.shape;
+        temp = true;
+        if(other.temp == false)
+            arr = other.arr;
+        else{
+            arr = new int[size];
+#pragma omp parallel for
+            for(int i = 0;i < size;i++)
+                arr[i] = other.arr[i];
+        }
+        other.shape = nullptr;
+        other.arr = nullptr;
+    }
+
     /**
      * @brief Destructor to free allocated memory.
      */
@@ -132,54 +217,6 @@ public:
      * @brief Returns an iterator to the end of the array.
      */
     iterator end() { return iterator(arr + size); }
-
-    /**
-     * @brief Assignment operator to copy data from another numc object.
-     * @param source The numc object to assign from.
-     * @return Reference to the current object.
-     */
-    numc& operator=(const numc& source) {
-        if (this == &source) return *this; // Self-assignment check
-        if (temp) {
-            if (dim != source.dim) {
-                throw std::invalid_argument("Dimension mismatch in assignment: " + std::to_string(dim) + " vs " + std::to_string(source.dim));
-            }
-            for (int i = 0; i < dim; i++) {
-                if (shape[i] != source.shape[i]) {
-                    throw std::invalid_argument("Shape mismatch in assignment at dimension " + std::to_string(i) + ": " + std::to_string(shape[i]) + " vs " + std::to_string(source.shape[i]));
-                }
-            }
-#pragma omp parallel for
-            for (int i = 0; i < size; i++) {
-                arr[i] = source.arr[i];
-            }
-        } else {
-            int* new_shape = nullptr;
-            dtype* new_arr = nullptr;
-            try {
-                new_shape = new int[source.dim];
-                for (int i = 0; i < source.dim; i++) {
-                    new_shape[i] = source.shape[i];
-                }
-                new_arr = new dtype[source.size];
-#pragma omp parallel for
-                for (int i = 0; i < source.size; i++) {
-                    new_arr[i] = source.arr[i];
-                }
-                delete[] shape;
-                delete[] arr;
-                dim = source.dim;
-                shape = new_shape;
-                arr = new_arr;
-                size = source.size;
-            } catch (const std::bad_alloc& e) {
-                delete[] new_shape;
-                delete[] new_arr;
-                throw std::runtime_error("Memory allocation failed in assignment: " + std::string(e.what()));
-            }
-        }
-        return *this;
-    }
 
     /**
      * @brief Index operator to access a subarray.
