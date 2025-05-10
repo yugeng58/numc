@@ -26,11 +26,11 @@ int main() {
 
     numc<int> E = A*B*C*D;
 
-    numc<int> F = A.axis_max(0);
+//    numc<int> F = A.axis_max(0);
 
-    E = E.axis_max(0).axis_max(1).axis_max(2).axis_max(3);
+//    E = E.axis_max(0).axis_max(1).axis_max(2).axis_max(3);
 
-    E.print();
+    E.slice(0,10,2,1).print();
 
     return 0;
 }

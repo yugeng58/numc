@@ -218,7 +218,10 @@ public:
      * @param step Step size between elements.
      * @return A new numc object containing the sliced data.
      */
-    numc slice(int from, int to, int step) {
+    numc slice(int from, int to, int step,int axis = 0){
+        if (axis < 0 || axis >= dim) {
+            throw std::invalid_argument("Axis out of range");
+        }
         if (dim < 1) {
             throw std::invalid_argument("Cannot slice array with dimension < 1.");
         }
@@ -229,17 +232,26 @@ public:
         int* new_shape = nullptr;
         try {
             new_shape = new int[dim];
-            new_shape[0] = new_size;
-            for (int i = 1; i < dim; i++) {
+            int mod = 1;
+            int strike = 1;
+            for (int i = 0; i < dim; i++) {
                 new_shape[i] = shape[i];
+                if (i < axis)
+                    mod *= shape[i];
+                if (i > axis)
+                    strike *= shape[i];
             }
+            new_shape[axis] = new_size;
             numc<dtype> rt(dim, new_shape);
             delete[] new_shape;
-            for (int i = 0; i < rt.shape[0]; i++) {
-                rt[i] = (*this)[from + i * step];
-            }
+#pragma omp parallel for collapse(3)
+            for (int i = 0; i < mod; i++)
+                for (int j = 0; j < new_size; j++)
+                    for (int k = 0; k < strike; k++)
+                        rt.arr[i * strike * new_size + j * strike + k] =
+                                arr[i * strike * shape[axis] + (from + step * j) * strike + k];
             return rt;
-        } catch (...) {
+        }catch (...) {
             delete[] new_shape;
             throw;
         }
