@@ -137,7 +137,7 @@ public:
         dtype rt = 0;
         if (init_to_first_term)
             rt = arr[0];
-#pragma omp parallel for default(none) shared(rt,fptr)
+//#pragma omp parallel for default(none) shared(rt,fptr)
         for (int i = 0; i < size; i++)
             rt = fptr(rt, arr[i]);
         return rt;
@@ -148,7 +148,7 @@ public:
         dtype rt = 0;
         if (init_to_first_term)
             rt = arr[0];
-#pragma omp parallel for default(none) shared(rt,fptr)
+//#pragma omp parallel for default(none) shared(rt,fptr)
         for (int i = 0; i < size; i++)
             rt = fptr(rt, arr[i], i);
         return rt;
