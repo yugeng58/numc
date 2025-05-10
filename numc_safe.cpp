@@ -136,27 +136,6 @@ public:
         return *this;
     }
 
-    numc& operator=(numc&& other){
-        if (this != &other)
-            return *this;
-        delete [] shape;
-        delete [] arr;
-        size = other.size;
-        dim = other.dim;
-        shape = other.shape;
-        temp = true;
-        if(other.temp == false)
-            arr = other.arr;
-        else{
-            arr = new int[size];
-#pragma omp parallel for
-            for(int i = 0;i < size;i++)
-                arr[i] = other.arr[i];
-        }
-        other.shape = nullptr;
-        other.arr = nullptr;
-    }
-
     /**
      * @brief Destructor to free allocated memory.
      */

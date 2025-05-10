@@ -23,13 +23,14 @@ int main() {
     B.reshape(4,new int[4]{1,10,1,1});
     C.reshape(4,new int[4]{1,1,10,1});
     D.reshape(4,new int[4]{1,1,1,10});
-//    numc<int> E = A+B+C+D;
+
+    numc<int> E = A*B*C*D;
 
     numc<int> F = A.axis_max(0);
 
-//    E = E.axis_max(0).axis_max(1).axis_max(2).axis_max(3);
+    E = E.axis_max(0).axis_max(1).axis_max(2).axis_max(3);
 
-//    E.print();
+    E.print();
 
     return 0;
 }
