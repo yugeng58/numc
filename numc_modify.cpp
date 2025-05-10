@@ -3,7 +3,7 @@
 #include "omp.h"
 #pragma omp requires unified_shared_memory
 
-using namespace std;
+//using namespace std;
 
 template <class dtype>
 class numc {
@@ -16,7 +16,7 @@ private:
 
 public:
     // Constructor: Create a numc object
-    numc(int dim, const int* shape, dtype* source = nullptr): dim(dim), size(1) {
+    explicit numc(int dim, const int* shape, dtype* source = nullptr): dim(dim), size(1) {
         if (dim)
             this->shape = new int[dim];
         else
@@ -54,10 +54,10 @@ public:
     numc & operator= (const numc & source) {
         if (temp) {
             if (dim != source.dim)
-                throw invalid_argument("shape not match");
+                throw std::invalid_argument("shape not match");
             for (int i = 0; i < dim; i++)
                 if (shape[i] != source.shape[i])
-                    throw invalid_argument("shape not match");
+                    throw std::invalid_argument("shape not match");
 #pragma omp parallel for default(none) shared(source)
             for (int i = 0; i < size; i++)
                 arr[i] = source.arr[i];
@@ -137,7 +137,7 @@ public:
         dtype rt = 0;
         if (init_to_first_term)
             rt = arr[0];
-//#pragma omp parallel for default(none) shared(rt,fptr)
+#pragma omp parallel for default(none) shared(rt,fptr)
         for (int i = 0; i < size; i++)
             rt = fptr(rt, arr[i]);
         return rt;
@@ -148,7 +148,7 @@ public:
         dtype rt = 0;
         if (init_to_first_term)
             rt = arr[0];
-//#pragma omp parallel for default(none) shared(rt,fptr)
+#pragma omp parallel for default(none) shared(rt,fptr)
         for (int i = 0; i < size; i++)
             rt = fptr(rt, arr[i], i);
         return rt;
@@ -175,7 +175,7 @@ public:
     // Broadcast pointwise operation: Apply broadcasted pointwise operation
     numc ptp_broadcast_op(const numc & source, dtype (*fptr)(dtype, dtype)) {
         if (!broadcast_check(source))
-            throw invalid_argument("ptp error : shape not match");
+            throw std::invalid_argument("ptp error : shape not match");
         int* new_shape = broadcast_shape(source);
         numc<dtype> rt = numc<dtype>(dim, new_shape);
         delete [] new_shape;
@@ -189,7 +189,7 @@ public:
     // Broadcast pointwise operation (with index): Apply indexed broadcasted pointwise operation
     numc ptp_broadcast_op(const numc & source, dtype (*fptr)(dtype, dtype, int)) {
         if (!broadcast_check(source))
-            throw invalid_argument("ptp error : shape not match");
+            throw std::invalid_argument("ptp error : shape not match");
         int* new_shape = broadcast_shape(source);
         numc<dtype> rt = numc<dtype>(dim, new_shape);
         delete [] new_shape;
@@ -257,7 +257,7 @@ public:
     // Axis expand: Expand array along specified axis
     numc axis_expand(int axis, int axis_target, dtype (*fptr)(dtype)) {
         if (shape[axis] != 1)
-            throw invalid_argument("ptp error : shape not match");
+            throw std::invalid_argument("ptp error : shape not match");
         int step = 1;
         int mod = 1;
         for (int i = dim - 1; i > axis; i--)
@@ -283,7 +283,7 @@ public:
     // Axis expand (with index): Expand array along specified axis with index
     numc axis_expand(int axis, int axis_target, dtype (*fptr)(dtype, int)) {
         if (shape[axis] != 1)
-            throw invalid_argument("ptp error : shape not match");
+            throw std::invalid_argument("ptp error : shape not match");
         int step = 1;
         int mod = 1;
         for (int i = dim - 1; i > axis; i--)
@@ -329,12 +329,12 @@ public:
     // Matrix multiplication: Matrix multiplication with broadcasting
     numc matmul(const numc & source) {
         if (dim != source.dim || dim < 2)
-            throw invalid_argument("ptp error : shape not match");
+            throw std::invalid_argument("ptp error : shape not match");
         for (int i = 0; i < dim - 2; i++)
             if ((shape[i] != source.shape[i]) && (source.shape[i] != 1) && (shape[i] != 1))
-                throw invalid_argument("ptp error : shape not match");
+                throw std::invalid_argument("ptp error : shape not match");
         if (shape[dim - 1] != source.shape[dim - 2])
-            throw invalid_argument("ptp error : shape not match");
+            throw std::invalid_argument("ptp error : shape not match");
         int* new_shape = new int[dim];
         for (int i = 0; i < dim - 2; i++)
             new_shape[i] = (shape[i] >= source.shape[i]) ? shape[i] : source.shape[i];
@@ -392,7 +392,7 @@ public:
     }
 
     // Reshape: Reshape array to new dimensions and shape
-    void reshape(int new_dim, int* new_shape) {
+    void reshape(int new_dim,const int* new_shape) {
         int new_size = 1;
         for (int i = 0; i < new_dim; i++)
             new_size *= new_shape[i];
@@ -437,24 +437,24 @@ public:
 
     // Print: Display dimensions, shape, and elements
     void print() {
-        cout << "dim = " << dim << endl;
+        std::cout << "dim = " << dim << std::endl;
         int steps[dim];
         steps[dim - 1] = 1;
-        cout << "shape = (";
+        std::cout << "shape = (";
         for (int i = 0; i < dim; i++)
-            cout << shape[i] << ",";
-        cout << ")" << endl;
+            std::cout << shape[i] << ",";
+        std::cout << ")" << std::endl;
         for (int i = dim - 2; i >= 0; i--)
             steps[i] = steps[i + 1] * shape[i + 1];
-        cout << "steps = (";
+        std::cout << "steps = (";
         for (int i = 0; i < dim; i++)
-            cout << steps[i] << ",";
-        cout << ")" << endl;
+            std::cout << steps[i] << ",";
+        std::cout << ")" << std::endl;
         for (int i = 0; i < size; i++) {
-            cout << "idx : [";
+            std::cout << "idx : [";
             for (int j = 0; j < dim; j++)
-                cout << (i / steps[j]) % shape[j] << ",";
-            cout << "] = " << arr[i] << endl;
+                std::cout << (i / steps[j]) % shape[j] << ",";
+            std::cout << "] = " << arr[i] << std::endl;
         }
     }
 };
