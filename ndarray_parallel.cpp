@@ -74,8 +74,6 @@ public:
     }
 
     ndarray<type>(ndarray<type>& source): ndarray<type>(source.dim,source.shape){
-        int* index = new int[dim]{};
-
 #pragma omp parallel
         {
             int* local_index = new int[dim]{};
@@ -87,7 +85,6 @@ public:
             }
             delete [] local_index;
         }
-        delete [] index;
     }
 
     ~ndarray<type>(){
@@ -101,26 +98,10 @@ public:
     }
 
     ndarray<type>& operator= (ndarray<type>& source){
-        if(source == *this)
+        if(&source == this)
             return *this;
-        if(is_view){
-            if(dim != source.dim)
-                return *this;
-            for(int i = 0;i < dim;i++)
-                if(shape[i] != source.shape[i])
-                    return *this;
-
-#pragma omp parallel
-            {
-                int* local_index = new int[dim]{};
-#pragma omp for
-                for(int i = 0;i < size;i++) {
-                    // Use helper function to calculate index
-                    linear_to_index(i, local_index, dim);
-                    get_value(local_index) = source.get_value(local_index);
-                }
-                delete [] local_index;
-            }
+        if(is_view) {
+            element_to_element_mutator(source, [](type a, type b) { return b; });
             return *this;
         }
         else{
@@ -142,18 +123,6 @@ public:
 
             arr_copy(shape, source.shape, dim);
 
-#pragma omp parallel
-            {
-                int* local_index = new int[dim]{};
-#pragma omp for
-                for(int i = 0;i < size;i++) {
-                    // Use helper function to calculate index
-                    linear_to_index(i, local_index, dim);
-                    arr[i] = source.get_value(local_index);
-                }
-                delete [] local_index;
-            }
-
             for(int i = 0;i < dim;i++)
                 stride[i] = 1;
 
@@ -167,30 +136,18 @@ public:
             this->step[dim - 1] = 1;
             for (int i = dim - 2; i >= 0; i--)
                 this->step[i] = this->step[i + 1] * shape[i + 1];
+
+            element_to_element_mutator(source, [](type a, type b) { return b; });
 
             return *this;
         }
     }
 
     ndarray<type>& operator= (ndarray<type> source){
-        if(is_view){
-            if(dim != source.dim)
-                return *this;
-            for(int i = 0;i < dim;i++)
-                if(shape[i] != source.shape[i])
-                    return *this;
-
-#pragma omp parallel
-            {
-                int* local_index = new int[dim]{};
-#pragma omp for
-                for(int i = 0;i < size;i++) {
-                    // Use helper function to calculate index
-                    linear_to_index(i, local_index, dim);
-                    get_value(local_index) = source.get_value(local_index);
-                }
-                delete [] local_index;
-            }
+        if(&source == this)
+            return *this;
+        if(is_view) {
+            element_to_element_mutator(source, [](type a, type b) { return b; });
             return *this;
         }
         else{
@@ -212,18 +169,6 @@ public:
 
             arr_copy(shape, source.shape, dim);
 
-#pragma omp parallel
-            {
-                int* local_index = new int[dim]{};
-#pragma omp for
-                for(int i = 0;i < size;i++) {
-                    // Use helper function to calculate index
-                    linear_to_index(i, local_index, dim);
-                    arr[i] = source.get_value(local_index);
-                }
-                delete [] local_index;
-            }
-
             for(int i = 0;i < dim;i++)
                 stride[i] = 1;
 
@@ -237,6 +182,8 @@ public:
             this->step[dim - 1] = 1;
             for (int i = dim - 2; i >= 0; i--)
                 this->step[i] = this->step[i + 1] * shape[i + 1];
+
+            element_to_element_mutator(source, [](type a, type b) { return b; });
 
             return *this;
         }
@@ -350,6 +297,13 @@ public:
     }
 
     ndarray<type> & element_to_element_mutator(ndarray<type>& source,type (*fptr)(type,type)){
+        if (!broadcast_check(source,dim) or dim != source.dim)
+            throw std::invalid_argument("element_to_element_operation");
+        int* new_shape = broadcast_shape(source,dim, nullptr,0);
+        for(int i = 0;i < dim;i++)
+            if(new_shape[i] != shape[i])
+                throw std::invalid_argument("element_to_element_operation");
+        delete [] new_shape;
 #pragma omp parallel
         {
             int* local_index = new int[dim]{};
@@ -366,7 +320,6 @@ public:
 
     ndarray<type> element_operation(type (*fptr)(type)){
         ndarray<type> rt = ndarray<type>(dim,shape);
-
 #pragma omp parallel
         {
             int* local_index = new int[dim]{};
@@ -425,6 +378,13 @@ public:
     }
 
     ndarray<type> & array_to_array_mutator(ndarray<type>& source,ndarray<type> (*fptr)(ndarray<type>,ndarray<type>),int depth){
+        if (!broadcast_check(source,depth))
+            throw std::invalid_argument("array_to_array_operation");
+        int* new_shape = broadcast_shape(source,depth);
+        for(int i = 0;i < depth;i++)
+            if(new_shape[i] != shape[i])
+                throw std::invalid_argument("array_to_array_operation");
+        delete [] new_shape;
 #pragma omp parallel
         {
             int* local_index = new int[depth]{};
@@ -496,16 +456,48 @@ public:
         return element_to_element_operation(source,[](type a,type b){return a + b;});
     }
 
+    ndarray<type>& operator+= (ndarray<type> source){
+        return element_to_element_mutator(source,[](type a,type b){return a + b;});
+    }
+
     ndarray<type> operator- (ndarray<type> source){
         return element_to_element_operation(source,[](type a,type b){return a - b;});
+    }
+
+    ndarray<type>& operator-= (ndarray<type> source){
+        return element_to_element_mutator(source,[](type a,type b){return a - b;});
     }
 
     ndarray<type> operator* (ndarray<type> source){
         return element_to_element_operation(source,[](type a,type b){return a * b;});
     }
 
+    ndarray<type>& operator*= (ndarray<type> source){
+        return element_to_element_mutator(source,[](type a,type b){return a * b;});
+    }
+
     ndarray<type> operator/ (ndarray<type> source){
         return element_to_element_operation(source,[](type a,type b){return a / b;});
+    }
+
+    ndarray<type>& operator/= (ndarray<type> source){
+        return element_to_element_mutator(source,[](type a,type b){return a / b;});
+    }
+
+    ndarray<type> operator% (ndarray<type> source){
+        return element_to_element_operation(source,[](type a,type b){return a % b;});
+    }
+
+    ndarray<type>& operator%= (ndarray<type> source){
+        return element_to_element_mutator(source,[](type a,type b){return a % b;});
+    }
+
+    ndarray<type> operator|| (ndarray<type> source){
+        return element_to_element_operation(source,[](type a,type b){return a || b;});
+    }
+
+    ndarray<type> operator&& (ndarray<type> source){
+        return element_to_element_operation(source,[](type a,type b){return a && b;});
     }
 
     ndarray<type> max(ndarray<type> source){
@@ -514,6 +506,66 @@ public:
 
     ndarray<type> min(ndarray<type> source){
         return element_to_element_operation(source,[](type a,type b){return std::min(a,b);});
+    }
+
+    ndarray<type> operator!(){
+        return element_mutator([](type a){return !a;});
+    }
+
+    ndarray<type>& operator++(){
+        return element_mutator([](type a){return ++a;});
+    }
+
+    ndarray<type>& operator--(){
+        return element_mutator([](type a){return --a;});
+    }
+
+    ndarray<type> operator+ (type i){
+        return element_operation([=](type a){return a + i;});
+    }
+
+    ndarray<type> operator- (type i){
+        return element_operation([=](type a){return a - i;});
+    }
+
+    ndarray<type> operator* (type i){
+        return element_operation([=](type a){return a * i;});
+    }
+
+    ndarray<type> operator/ (type i){
+        return element_operation([=](type a){return a / i;});
+    }
+
+    ndarray<type> operator% (type i){
+        return element_operation([=](type a){return a % i;});
+    }
+
+    ndarray<type> operator|| (type i){
+        return element_operation([=](type a){return a || i;});
+    }
+
+    ndarray<type> operator&& (type i){
+        return element_operation([=](type a){return a && i;});
+    }
+
+    ndarray<type>& operator+= (type i){
+        return element_mutator([=](type a){return a + i;});
+    }
+
+    ndarray<type>& operator-= (type i){
+        return element_mutator([=](type a){return a - i;});
+    }
+
+    ndarray<type>& operator*= (type i){
+        return element_mutator([=](type a){return a * i;});
+    }
+
+    ndarray<type>& operator/= (type i){
+        return element_mutator([=](type a){return a / i;});
+    }
+
+    ndarray<type>& operator%= (type i){
+        return element_mutator([=](type a){return a % i;});
     }
 
     static ndarray<type> elementary_matmul(ndarray<type> a,ndarray<type> b){
@@ -638,6 +690,28 @@ public:
 
             return rt;
         },axis,element_shape,dim-axis);
+    }
+
+    ndarray<type> get_transpose(int* axis_order){
+        int new_shape[dim];
+        for(int i = 0;i < dim;i++)
+            new_shape[i] = shape[axis_order[i]];
+        ndarray<type> rt = ndarray<type>(dim,new_shape);
+#pragma omp parallel
+        {
+            int* rt_index = new int[dim]{};
+            int* index = new int[dim]{};
+#pragma omp for
+            for(int i = 0;i < rt.size;i++) {
+                rt.linear_to_index(i, rt_index, dim);
+                for(int j = 0;j < dim;j++)
+                    index[j] = rt_index[axis_order[j]];
+                rt.get_value(rt_index) = this->get_value(index);
+            }
+            delete [] rt_index;
+            delete [] index;
+        }
+        return rt;
     }
 
     // Helper method to get the number of threads

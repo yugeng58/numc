@@ -1,10 +1,11 @@
 #include <iostream>
 #include <stdexcept>
 #include <string>
-#include "omp.h"
+#include <algorithm> // For std::max, std::min
+#include <omp.h>
 #pragma omp requires unified_shared_memory
 
-#include "ndarray_parallel.cpp"
+#include "ndarray_safe.cpp"
 
 using namespace std;
 
@@ -25,15 +26,21 @@ int main() {
     delete [] index_1;
     delete [] index_2;
 
+    A.print();
+
+    int axis_order[3]{2,0,1};
+
+    A.get_transpose(axis_order).print();
+
 //    A.print();
 //
 //    B.print();
 
-    A.matmul(B).print();
-
-    A.matmul(B).axis_max(1).print();
-
-    B.matmul(A).print();
+//    A.matmul(B).print();
+//
+//    A.matmul(B).axis_max(1).print();
+//
+//    B.matmul(A).print();
 
 //    A.axis_min(1).print();
 
