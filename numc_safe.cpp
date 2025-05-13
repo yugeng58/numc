@@ -13,6 +13,8 @@ private:
     dtype* arr;       // Flattened array storing the data
     int size;         // Total number of elements (product of shape)
     bool temp;        // Flag indicating if the array is temporary (not owned)
+//    int* stride;
+//    int* init;
 
 public:
     /**
@@ -27,11 +29,15 @@ public:
         }
         try {
             this->shape = dim ? new int[dim] : nullptr;
+//            this->stride = dim ? new int[dim] : nullptr;
+//            this->init = dim ? new int[dim] : nullptr;
             for (int i = 0; i < dim; i++) {
                 if (shape[i] <= 0) {
                     throw std::invalid_argument("Shape dimensions must be positive: shape[" + std::to_string(i) + "] = " + std::to_string(shape[i]));
                 }
                 this->shape[i] = shape[i];
+//                this->stride[i] = 1;
+//                this->init[i] = 0;
                 size *= shape[i];
             }
             if (source) {
@@ -46,9 +52,13 @@ public:
             }
         } catch (const std::bad_alloc& e) {
             delete[] this->shape;
+//            delete[] this->stride;
+//            delete[] this->init;
             throw std::runtime_error("Memory allocation failed in constructor: " + std::string(e.what()));
         } catch (...) {
             delete[] this->shape;
+//            delete[] this->stride;
+//            delete[] this->init;
             throw;
         }
     }
@@ -78,7 +88,7 @@ public:
         if(other.temp == false)
             arr = other.arr;
         else{
-            arr = new int[size];
+            arr = new dtype[size];
 #pragma omp parallel for
             for(int i = 0;i < size;i++)
                 arr[i] = other.arr[i];
@@ -216,6 +226,7 @@ public:
      * @param from Starting index (inclusive).
      * @param to Ending index (exclusive).
      * @param step Step size between elements.
+     * @param axis axis of operation.
      * @return A new numc object containing the sliced data.
      */
     numc slice(int from, int to, int step,int axis = 0){
@@ -233,13 +244,13 @@ public:
         try {
             new_shape = new int[dim];
             int mod = 1;
-            int strike = 1;
+            int stride = 1;
             for (int i = 0; i < dim; i++) {
                 new_shape[i] = shape[i];
                 if (i < axis)
                     mod *= shape[i];
                 if (i > axis)
-                    strike *= shape[i];
+                    stride *= shape[i];
             }
             new_shape[axis] = new_size;
             numc<dtype> rt(dim, new_shape);
@@ -247,9 +258,9 @@ public:
 #pragma omp parallel for collapse(3)
             for (int i = 0; i < mod; i++)
                 for (int j = 0; j < new_size; j++)
-                    for (int k = 0; k < strike; k++)
-                        rt.arr[i * strike * new_size + j * strike + k] =
-                                arr[i * strike * shape[axis] + (from + step * j) * strike + k];
+                    for (int k = 0; k < stride; k++)
+                        rt.arr[i * stride * new_size + j * stride + k] =
+                                arr[i * stride * shape[axis] + (from + step * j) * stride + k];
             return rt;
         }catch (...) {
             delete[] new_shape;

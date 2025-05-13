@@ -1,36 +1,41 @@
 #include <iostream>
+#include <stdexcept>
+#include <string>
 #include "omp.h"
-#include "numc_safe.cpp"
+#pragma omp requires unified_shared_memory
+
+#include "ndarray_parallel.cpp"
+
 using namespace std;
 
 int main() {
-
-    int shape[1] = {10};
-    numc<int> A = numc<int>(1,shape);
-    numc<int> B = numc<int>(1,shape);
-    numc<int> C = numc<int>(1,shape);
-    numc<int> D = numc<int>(1,shape);
-
+    const int dim = 3;
+    int shape_1[dim]{1,10,1};
+    int shape_2[dim]{1,1,10};
+    ndarray<int> A = ndarray<int>(dim,shape_1);
+    ndarray<int> B = ndarray<int>(dim,shape_2);
+    int* index_1 = new int[3]{};
+    int* index_2 = new int[3]{};
     for(int i = 0;i < 10;i++){
-        A[i].get() = i + 1;
-        B[i].get() = i + 1;
-        C[i].get() = i + 1;
-        D[i].get() = i + 1;
+        A.get_value(index_1) = i;
+        B.get_value(index_2) = i;
+        A.index_forward_iterate(index_1,dim);
+        B.index_forward_iterate(index_2,dim);
     }
+    delete [] index_1;
+    delete [] index_2;
 
+//    A.print();
+//
+//    B.print();
 
-    A.reshape(4,new int[4]{10,1,1,1});
-    B.reshape(4,new int[4]{1,10,1,1});
-    C.reshape(4,new int[4]{1,1,10,1});
-    D.reshape(4,new int[4]{1,1,1,10});
+    A.matmul(B).print();
 
-    numc<int> E = A*B*C*D;
+    A.matmul(B).axis_max(1).print();
 
-//    numc<int> F = A.axis_max(0);
+    B.matmul(A).print();
 
-//    E = E.axis_max(0).axis_max(1).axis_max(2).axis_max(3);
-
-    E.slice(0,10,2,1).print();
+//    A.axis_min(1).print();
 
     return 0;
 }
