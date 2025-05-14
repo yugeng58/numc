@@ -8,12 +8,7 @@ find_package(OpenMP REQUIRED)  # 必须存在REQUIRED
 
 add_executable(ndarray
         main.cpp
-        numc.cpp
-        numc_modify.cpp
-        numc_safe.cpp
         ndarray.cpp
-        ndarray_parallel.cpp
-        ndarray_safe.cpp
 )
 
 # 强制应用OpenMP设置到目标
